@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Replace only specific variables from a source -> dest file 
+# and leave the rest unchanged
+function templatesubst() {
+    local name=${1?ArgumentError: name not provided}
+    local inputfile=${2?ArgumentError: inputfile not provided}
+    local outputfile=${3?ArgumentError: outputfile not provided}
+    
+    export DEVCONTAINER_NAME="$name"
+    export USER_GID="$(id -g $USER)"
+    export USER_UID="$(id -u $USER)"
+    export USER_NAME=$USER
+    export DISPLAY=$DISPLAY
+
+    # https://unix.stackexchange.com/a/294400/358706
+    echo "$(envsubst '$DEVCONTAINER_NAME $USER_GID $USER_UID $USER_NAME $DISPLAY'<$inputfile)" > $outputfile
+}
+
+# Creates a new template by copying files from our template store
+# to a sub-directory of .devcontainer
+function new() {
+    local name=${1?ArgumentError: name not provided}
+    local template=${2?ArgumentError: template not provided}
+
+    local templates_root="$PWD/templates"
+    
+    # Ensure source template exists
+    [ -d $templates_root/$template ] || { echo "Could not find template $template in $templates_root"; exit 1; }
+
+    # Create output directory if it doesn't exist
+    mkdir -p $PWD/.devcontainer/$name/
+
+    # Force copy files for now, can add flags for interactivity
+    cp -fv $templates_root/$template/* $PWD/.devcontainer/$name/
+}
+
+# Activates the selected devcontainer by copying the sub-directory files
+# to .devcontainer
+function activate() {
+    local name=${1?ArgumentError: name not provided}
+    local devcontainer_path="$PWD/.devcontainer/$name"
+    local outpath="$PWD/.devcontainer"
+
+    [ -d "$devcontainer_path" ] || { echo "Could not find devcontainer $name in $PWD/.devcontainer"; exit 1; }
+
+    # Run activate script if it exists
+    if [ -f $devcontainer_path/pre-activate ]
+    then
+        # Source all devcontainer environment variables and ensure 
+        # they're exported without the export keyword so we can use
+        # the same file in our docker-compose.yml too
+        if [ -f $devcontainer_path/env ]
+        then
+            echo "Sourcing env for activate script..."
+            set -o allexport
+            source $devcontainer_path/env
+            set +o allexport
+        fi
+
+        echo "Running activate script..."
+        # Needs env, we haven't substituted template vars yet
+        DEVCONTAINER_NAME="$name" \
+        USER_GID="$(id -g $USER)" \
+        USER_UID="$(id -u $USER)" \
+        USER_NAME=$USER \
+        DISPLAY=$DISPLAY \
+            $devcontainer_path/pre-activate
+        if [ $? -ne 0 ]
+        then
+            exit 1
+        fi
+    fi
+
+    # Loop over all devcontainer files and replace template vars only
+    find $devcontainer_path -name "*" -type f -print0 | while IFS= read -r -d '' file; 
+    do
+        echo "Copying $file to $outpath/$(basename $file) and replacing template vars..."
+        templatesubst $name "$file" "$outpath/$(basename $file)"; 
+        chmod --reference="$file" "$outpath/$(basename $file)"
+    done
+}
+
+function deactivate() {
+    if [ -f $PWD/.devcontainer/pre-deactivate ]
+    then
+        if [ -f $PWD/.devcontainer/env ]
+        then
+            echo "Sourcing env for deactivate script..."
+            set -o allexport
+            source $PWD/.devcontainer/env
+            set +o allexport
+        fi
+
+        echo "Running deactivate script..."
+        # Does not need env, template vars have been substituted
+        $PWD/.devcontainer/pre-deactivate
+        if [ $? -ne 0 ]
+        then
+            exit 1
+        fi
+    fi
+
+    # Loop over all devcontainer files and remove them
+    echo "Removing deactivated devcontainer files..."
+    find $PWD/.devcontainer -maxdepth 1 -name "*" -type f -print0 | while IFS= read -r -d '' file; 
+    do
+        echo "Removing $file..."
+        rm $file
+    done
+}
+
+# Parse options using getopt
+
+# TODO: Find better ways of parsing args
+opts=$(getopt \
+    --longoptions "new,activate,deactivate,from" \
+    --name "$(basename "$0")" \
+    --options "" \
+    -- "$@"
+)
+eval set --$opts
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --new)
+            shift;shift
+            name="$1"
+            shift
+            template="$1"
+            shift
+            new $name $template
+            ;;
+
+        --activate)
+            shift;shift
+            name="$1"
+            activate $name
+            ;;
+
+        --deactivate)
+            deactivate
+            shift
+            ;;
+
+        *)
+            break
+            ;;
+    esac
+done

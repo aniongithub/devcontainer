@@ -1,0 +1,79 @@
+#!/bin/bash
+
+this_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd)"
+
+# Include functions we need
+source $this_dir/rsshfs.sh
+
+# Fail on unset variables
+set -u
+
+# check all our dependencies
+command -v ssh-keygen || { echo "Could not find ssh-keygen. Install it with apt-get install openssh-client"; exit 1; }
+command -v ssh-copy-id || { echo "Could not find ssh-copy-id. Install it with apt-get install openssh-client"; exit 1; }
+command -v /usr/lib/openssh/sftp-server || { echo "Could not find sftp-server. Install it with apt-get install openssh-sftp-server"; exit 1; }
+command -v docker || { echo "Could not find Docker! More info: https://docs.docker.com/install/"; exit 1; }
+command -v docker-machine || { echo "Could not find docker-machine. More info: https://docs.docker.com/v17.09/machine/install-machine/"; exit 1; }
+command -v jq || { echo "Could not find jq. More info: https://github.com/stedolan/jq/wiki/Installation"; exit 1; }
+
+echo "Trying to find docker-machine $REMOTE_MACHINE_NAME..."
+docker-machine ls -q | grep "^$REMOTE_MACHINE_NAME\$"
+if [ $? -eq 0 ]
+then
+    echo "Docker machine $REMOTE_MACHINE_NAME exists, re-using."
+else
+    echo "Docker machine $REMOTE_MACHINE_NAME not found, creating..."
+    ping -c4 $REMOTE_MACHINE_NAME
+    if [ $? -eq 0 ];
+    then
+        REMOTE_MACHINE_IP=$(getent ahostsv4 $REMOTE_MACHINE_NAME | awk '{ print $1; exit }')
+    else
+        echo "Could not ping $REMOTE_MACHINE_NAME, trying ip address $REMOTE_MACHINE_IP..."
+    fi
+
+    # Create the ssh-key we're going to copy over and have docker-machine use
+    REMOTE_HOST_KEY="/tmp/$REMOTE_MACHINE_NAME.id_rsa"
+    echo -e 'y\n' | ssh-keygen -t rsa -b 4096 -f $REMOTE_HOST_KEY -q -N ""
+    ssh-copy-id -f -i /tmp/$REMOTE_MACHINE_NAME.id_rsa ${REMOTE_USERNAME?"Remote username not specified"}@$REMOTE_MACHINE_IP
+    docker-machine create \
+        --driver generic \
+        --generic-ip-address="$REMOTE_MACHINE_IP" \
+        --generic-ssh-user="$REMOTE_USERNAME" \
+        --generic-ssh-key $REMOTE_HOST_KEY \
+        $REMOTE_MACHINE_NAME
+fi
+
+# Ensure sshfs is installed on the remote machine
+echo "Ensuring sshfs is installed on the remote machine..."
+# https://stackoverflow.com/a/27355109/802203
+docker-machine ssh $REMOTE_MACHINE_NAME \
+    "sudo apt-get update;sudo apt-get install -y sshfs;mkdir -p /tmp/$DEVCONTAINER_NAME"
+
+# Ensure user_allow_other is active
+echo "Ensuring user_allow_other is active..."
+# https://stackoverflow.com/a/27355109/802203
+docker-machine ssh $REMOTE_MACHINE_NAME "sudo sed -i '/user_allow_other/s/^#//g' /etc/fuse.conf"
+
+# Note, needs openssh-sftp-server installed
+echo "Mounting local workspace to remote machine...."
+rsshfs $PWD $REMOTE_MACHINE_NAME:/tmp/$DEVCONTAINER_NAME -o rw &
+
+SETTINGS_DIR="$PWD/.vscode"
+SETTINGS="$SETTINGS_DIR/settings.json"
+
+# Create the settings file (and directory) if it doesn't exist
+[ -d "$SETTINGS_DIR" ] || mkdir -p "$SETTINGS_DIR"
+[ -f "$SETTINGS" ] || echo "{}" > "$SETTINGS"
+
+# Set the docker env for this hook
+echo "Fetching docker-machine details for $REMOTE_MACHINE_NAME"
+eval $(docker-machine env $REMOTE_MACHINE_NAME)
+
+# Use jq to generate our VS Code settings file
+echo "Updating VS Code settings (requires re-load)..."
+echo "$( jq -M \
+    --arg dockerHost "$DOCKER_HOST" \
+    --arg dockerCertPath "$DOCKER_CERT_PATH" \
+    --arg dockerMachineName "$REMOTE_MACHINE_NAME" \
+    --arg dockerTlsVerify "$DOCKER_TLS_VERIFY" \
+    '.["docker.host"]=$dockerHost|.["docker.certPath"]=$dockerCertPath|.["docker.machineName"]=$dockerMachineName|.["docker.tlsVerify"]=$dockerTlsVerify' $SETTINGS )" > $SETTINGS

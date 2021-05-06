@@ -1,0 +1,23 @@
+#!/bin/bash
+
+this_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd)"
+
+# Include functions we need
+source $this_dir/rsshfs.sh
+
+# Fail on unset variables
+set -u
+
+# Unmount the remote folder
+rsshfs -u $REMOTE_MACHINE_NAME:/tmp/$DEVCONTAINER_NAME
+
+# Remove keys pointing to our remote host
+SETTINGS_DIR="$PWD/.vscode"
+SETTINGS="$SETTINGS_DIR/settings.json"
+if [ -f "$SETTINGS" ]
+then
+    echo $(jq 'del(."docker.host")' $SETTINGS) > $SETTINGS
+    echo $(jq 'del(."docker.certPath")' $SETTINGS) > $SETTINGS
+    echo $(jq 'del(."docker.machineName")' $SETTINGS) > $SETTINGS
+    echo $(jq 'del(."docker.tlsVerify")' $SETTINGS) > $SETTINGS
+fi
