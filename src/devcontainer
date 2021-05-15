@@ -23,7 +23,8 @@ function new() {
     local name=${1?ArgumentError: name not provided}
     local template=${2?ArgumentError: template not provided}
 
-    local templates_root="$PWD/templates"
+    local this_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+    local templates_root="$this_dir/templates"
     
     # Ensure source template exists
     [ -d $templates_root/$template ] || { echo "Could not find template $template in $templates_root"; exit 1; }
