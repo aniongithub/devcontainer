@@ -1,5 +1,7 @@
 cd /devcontainer/src/
 
+git clean -fxd
+
 export DEBFULLNAME="Ani Balasubramaniam"
 export DEBEMAIL="ani@anionline.me"
 export DEBFOLDER="/devcontainer/src"
@@ -26,4 +28,17 @@ echo 'etc/devcontainer/templates /usr/bin/templates' > debian/links
 # Remove example files
 rm debian/*.ex
 
+# Update link
+sed -i 's=<insert the upstream URL, if relevant>=https://github.com/aniongithub/devcontainer=' debian/control
+
+# Update description in control
+sed -i 's/<insert up to 60 chars description>/CLI tool to create and manage devcontainer configurations/' debian/control
+
+# Strip last line of long description
+sed -i '$d' debian/control
+echo ' devcontainer is a CLI tool that creates & manages one or more' >> debian/control
+echo ' Visual Studio Code devcontainer configurations. It comes with' >> debian/control
+echo ' useful templates for local and remote development.' >> debian/control
+
+# Call debuild to create our deb package
 debuild

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+command -v jq || { echo "Could not find jq. More info: https://github.com/stedolan/jq/wiki/Installation"; exit 1; }
+
 SETTINGS_DIR="$PWD/.vscode"
 SETTINGS="$SETTINGS_DIR/settings.json"
 if [ -f "$SETTINGS" ]
