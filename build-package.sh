@@ -39,4 +39,4 @@ echo ' Visual Studio Code devcontainer configurations. It comes with' >> debian/
 echo ' useful templates for local and remote development.' >> debian/control
 
 # Call debuild to create our deb package
-debuild
+debuild -us -uc
