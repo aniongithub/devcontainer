@@ -2,12 +2,10 @@ cd /devcontainer/src/
 
 git clean -fxd
 
-export DEBFULLNAME="Ani Balasubramaniam"
-export DEBEMAIL="ani@anionline.me"
-export DEBFOLDER="/devcontainer/src"
-export PACKAGE="devcontainer"
-export PACKAGE_VERSION="0.1"
-export DEB_PACKAGE_NAME="${PACKAGE}_${PACKAGE_VERSION}"
+export DEBFULLNAME=${AUTHOR_NAME}
+export DEBEMAIL=${AUTHOR_EMAIL}
+export DEBFOLDER=${SRC_FOLDER}
+export DEB_PACKAGE_NAME="${PACKAGE_NAME}_${PACKAGE_VERSION}"
 
 echo "Packaging ${DEB_PACKAGE_NAME}..."
 
