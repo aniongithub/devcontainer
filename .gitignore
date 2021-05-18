@@ -1,2 +1,3 @@
 src/debian/
 devcontainer_*
+extension/node_modules

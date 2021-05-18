@@ -1,0 +1,25 @@
+version: "3"
+services:
+  ${DEVCONTAINER_NAME}-base:
+    image: ${DEVCONTAINER_NAME}-base
+    env_file:
+        - env
+    build:
+      context: ..
+      dockerfile: Dockerfile
+  ${DEVCONTAINER_NAME}-dev:
+    depends_on: [ "${DEVCONTAINER_NAME}-base" ]
+    image: ${DEVCONTAINER_NAME}-dev
+    environment: 
+        - DEVCONTAINER_NAME=${DEVCONTAINER_NAME}
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - USER_NAME=${USER_NAME}
+        - DISPLAY=${DISPLAY}
+    build:
+      context: ..
+      dockerfile: .devcontainer/dev.Dockerfile
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - $PWD:/workspace
+    command: /bin/sh -c "while sleep 1000; do :; done"

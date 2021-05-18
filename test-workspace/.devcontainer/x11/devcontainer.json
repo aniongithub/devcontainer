@@ -1,0 +1,9 @@
+{
+	"name": "${DEVCONTAINER_NAME}",
+	"context": "..",
+	"workspaceFolder": "/workspace/",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "${DEVCONTAINER_NAME}-dev",
+	"initializeCommand": "[ -f .devcontainer/initialize ] && .devcontainer/initialize",
+	"settings": { "terminal.integrated.shell.linux": "/bin/bash" }
+}
