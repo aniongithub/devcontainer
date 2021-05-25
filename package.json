@@ -1,5 +1,7 @@
 {
+  "publisher": "aniongithub",
   "name": "devcontainer",
+  "repository": "https://github.com/aniongithub/devcontainer",
   "displayName": "devcontainer",
   "description": "devcontainer is a VS Code extension to create and manage one or more remote containers for development",
   "version": "0.0.1",
@@ -13,6 +15,9 @@
     "onCommand:devcontainer"
   ],
   "main": "./out/devcontainer.js",
+  "files": [
+    "src/scripts/**"
+  ],
   "contributes": {
     "commands": [
       {
@@ -41,5 +46,8 @@
     "mocha": "^8.2.1",
     "typescript": "^4.1.3",
     "vscode-test": "^1.5.0"
-  }
+  },
+  "extensionDependencies": [
+    "ms-vscode-remote.remote-containers"
+  ]
 }

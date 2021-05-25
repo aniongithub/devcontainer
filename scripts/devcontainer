@@ -115,7 +115,7 @@ function deactivate() {
 
 # TODO: Find better ways of parsing args
 opts=$(getopt \
-    --longoptions "new,activate,deactivate,from" \
+    --longoptions "new,activate,deactivate" \
     --name "$(basename "$0")" \
     --options "" \
     -- "$@"
@@ -143,7 +143,7 @@ while [[ $# -gt 0 ]]; do
             deactivate
             shift
             ;;
-
+            
         *)
             break
             ;;

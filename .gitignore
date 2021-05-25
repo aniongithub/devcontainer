@@ -1,3 +1,5 @@
 src/debian/
 devcontainer_*
-extension/node_modules
+node_modules/
+*.vsix
+test-workspace/

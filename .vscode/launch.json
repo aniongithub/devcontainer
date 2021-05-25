@@ -10,13 +10,13 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"/workspaces/test-workspace",
+				"/workspaces/devcontainer/test-workspace",
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
 			],
-			"preLaunchTask": "${defaultBuildTask}",
+			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
 			"name": "Extension Tests",
